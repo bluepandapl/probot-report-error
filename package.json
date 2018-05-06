@@ -1,0 +1,26 @@
+{
+  "name": "probot-report-error",
+  "version": "1.0.0",
+  "description": "Report errors in probot apps",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch --notify --notifyMode=change --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluepandapl/probot-report-error.git"
+  },
+  "author": "Blue PandaPL",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bluepandapl/probot-report-error/issues"
+  },
+  "homepage": "https://github.com/bluepandapl/probot-report-error#readme",
+  "devDependencies": {
+    "jest": "^22.4.3"
+  },
+  "dependencies": {
+    "probot-config": "^0.1.0"
+  }
+}
