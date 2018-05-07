@@ -1,12 +1,13 @@
-const { reportError, replaceInString } = require('../lib/index')
+const { ReportError, replaceInString } = require('../lib/index')
+const path = require('path')
 
-const getConfig = require('probot-config')
-jest.mock('probot-config', () => jest.fn().mockImplementation(() => ({
-  readConfig: {
-    title: 'My Title',
-    body: 'Error message: {{errorMessage}}'
+function mockRobot () {
+  return {
+    log: {
+      error: jest.fn()
+    }
   }
-})))
+}
 
 function mockContext () {
   return {
@@ -29,19 +30,20 @@ function mockContext () {
 }
 
 describe('reportError', () => {
-  let context
+  let context, reportError, robot
 
   beforeEach(() => {
     context = mockContext()
+    robot = mockRobot()
+    reportError = new ReportError(robot, path.join(__dirname, './fixtures/valid.yml'))
   })
 
   test('it successfully reports an error', async () => {
     context.github.issues.getForRepo.mockImplementation(() => ({data: []}))
     context.github.hasNextPage.mockImplementation(() => false)
 
-    await reportError(context, 'readConfig', {errorMessage: 'bad indentation'})
+    await reportError.report(context, 'readConfig', {errorMessage: 'bad indentation'})
 
-    expect(getConfig).toBeCalledWith(context, 'report-error.yml')
     expect(context.github.issues.create).toBeCalledWith({
       owner: 'owner',
       repo: 'repo',
@@ -54,14 +56,13 @@ describe('reportError', () => {
     context.github.issues.getForRepo.mockImplementation(() => ({data: []}))
     context.github.hasNextPage.mockImplementation(() => false)
 
-    await reportError(context, 'missingKey')
+    await reportError.report(context, 'missingKey')
 
-    expect(getConfig).toBeCalledWith(context, 'report-error.yml')
     expect(context.github.issues.create).toBeCalledWith({
       owner: 'owner',
       repo: 'repo',
       title: 'Uncaught error in probot application',
-      body: 'Something went wrong in your probot application. Please check the logs to resolve this issue.'
+      body: 'Something went wrong in your probot application. Please contact the app developer to resolve this issue.'
     })
   })
 
@@ -73,9 +74,8 @@ describe('reportError', () => {
     }))
     context.github.hasNextPage.mockImplementation(() => false)
 
-    await reportError(context, 'readConfig', {errorMessage: 'bad indentation'})
+    await reportError.report(context, 'readConfig', {errorMessage: 'bad indentation'})
 
-    expect(getConfig).toBeCalledWith(context, 'report-error.yml')
     expect(context.github.issues.create).not.toHaveBeenCalled()
   })
 
@@ -87,8 +87,8 @@ describe('reportError', () => {
       ]
     }))
     context.github.hasNextPage
-      .mockImplementationOnce(() => true)
-      .mockImplementationOnce(() => false)
+        .mockImplementationOnce(() => true)
+        .mockImplementationOnce(() => false)
     context.github.getNextPage.mockImplementation(() => ({
       data: [
         {title: 'A question'},
@@ -96,9 +96,8 @@ describe('reportError', () => {
       ]
     }))
 
-    await reportError(context, 'readConfig', {errorMessage: 'bad indentation'})
+    await reportError.report(context, 'readConfig', {errorMessage: 'bad indentation'})
 
-    expect(getConfig).toBeCalledWith(context, 'report-error.yml')
     expect(context.github.issues.create).not.toHaveBeenCalled()
   })
 
@@ -109,9 +108,8 @@ describe('reportError', () => {
     })
     context.github.hasNextPage.mockImplementation(() => false)
 
-    await reportError(context, 'readConfig', {errorMessage: 'bad indentation'})
+    await reportError.report(context, 'readConfig', {errorMessage: 'bad indentation'})
 
-    expect(getConfig).toBeCalledWith(context, 'report-error.yml')
     expect(context.github.issues.create).toBeCalledWith({
       owner: 'owner',
       repo: 'repo',
@@ -119,6 +117,14 @@ describe('reportError', () => {
       body: 'Error message: bad indentation'
     })
     expect(context.log.error).toBeCalledWith(`Failed to report issue. Please ensure that this app has permission to create issues: failed to report`)
+  })
+
+  test('it logs an error when given an invalid yml config file', () => {
+    expect(() => {
+      reportError = new ReportError(robot, path.join(__dirname, './fixtures/invalid.yml'))
+    }).toThrow()
+
+    expect(robot.log.error).toBeCalledWith(expect.stringContaining(`Failed to read config file at`))
   })
 })
 

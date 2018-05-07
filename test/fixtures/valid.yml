@@ -1,0 +1,3 @@
+readConfig:
+  title: 'My Title'
+  body: 'Error message: {{errorMessage}}'
